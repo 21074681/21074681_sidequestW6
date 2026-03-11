@@ -13,17 +13,13 @@ Emily Sharpe
 
 ## Description
 
-There are several jumping points built as rectangles for the blob to job from 1 to the other or off of. The blob is drawn as a joyfull and hyper circle, this blob jumps high and gracefully. It almost is like its skipping on the platforms and in the air. The hyper movement shows a level of excitment similar to an excited child waiting for candy.
-
----
+There are several jumping points for the fox to move i added dust to shwo his movement while he ran jumped from the 2 platforms.
 
 ## Learning Goals
 
 Learning Goals:
 
-- Convert a circular sprite to an AABB for collision
-- Implement overlap test and push-out resolution
-- Manage grounded state only when landing on top faces
+Add movement, sound or a reaction from a action ( dust moves when lands on ground)
 
 ---
 
@@ -35,6 +31,4 @@ N/A
 
 ## GenAI
 
-The code was written by Dr. Karen Cochrane, I Used GenAI to assit me with bringing my joyfull hyper ideas to life by displaying the changes i needed to make to specifc lines of code. With manual modification GenAI helped me trouble shoot the behaviour of the blob (how it landed, how long it was in the air) to diplay joyfulness.
-
----
+## The code was written by Dr. Karen Cochrane, I Used GenAI to assit me with bringing my joyfull hyper ideas to life by displaying the changes i needed to make to specifc lines of code. With manual modification GenAI helped me trouble shoot the behaviour of sound and dust
