@@ -1,18 +1,5 @@
 /*
   Week 6 — Example 2: Tile-Based Level & Basic Movement
-
-  Course: GBDA302 | Instructors: Dr. Karen Cochrane & David Han
-  Date: Feb. 26, 2026
-
-  Controls:
-    A or D (Left / Right Arrow)   Horizontal movement
-    W (Up Arrow)                  Jump
-    Space Bar                     Attack
-
-  Tile key:
-    g = groundTile.png       (surface ground)
-    d = groundTileDeep.png   (deep ground, below surface)
-      = empty (no sprite)
 */
 
 let ground;
@@ -33,11 +20,18 @@ let playerAnis = {
 let groundDeep;
 let groundImg, groundDeepImg;
 
-let attacking = false; // track if the player is attacking
-let attackFrameCounter = 0; // tracking attack animation
+let attacking = false;
+let attackFrameCounter = 0;
+
+// --- DEBUG ---
+let debugMode = false;
+let moonGravity = false;
+let showHitboxes = false;
+
+const NORMAL_GRAVITY = 10;
+const MOON_GRAVITY = 3;
 
 // --- TILE MAP ---
-// an array that uses the tile key to create the level
 let level = [
   "              ",
   "              ",
@@ -45,31 +39,23 @@ let level = [
   "              ",
   "           gg  ",
   "       ggg    ",
-  "gggggggggggggg", // surface ground
-  "dddddddddddddd", // deep ground
+  "gggggggggggggg",
+  "dddddddddddddd",
 ];
 
-// --- LEVEL CONSTANTS ---
-// camera view size
-const VIEWW = 320,
-  VIEWH = 180;
+// --- CONSTANTS ---
+const VIEWW = 320;
+const VIEWH = 180;
 
-// tile width & height
-const TILE_W = 24,
-  TILE_H = 24;
+const TILE_W = 24;
+const TILE_H = 24;
 
-// size of individual animation frames
-const FRAME_W = 32,
-  FRAME_H = 32;
+const FRAME_W = 32;
+const FRAME_H = 32;
 
-// Y-coordinate of player start (4 tiles above the bottom)
 const MAP_START_Y = VIEWH - TILE_H * 4;
 
-// gravity
-const GRAVITY = 10;
-
 function preload() {
-  // --- IMAGES ---
   playerImg = loadImage("assets/foxSpriteSheet.png");
   bgImg = loadImage("assets/combinedBackground.png");
   groundImg = loadImage("assets/groundTile.png");
@@ -77,16 +63,13 @@ function preload() {
 }
 
 function setup() {
-  // pixelated rendering with autoscaling
   createCanvas(800, 400);
 
-  world.gravity.y = 10;
   new Canvas(VIEWW, VIEWH, "pixelated");
 
-  // needed to correct an visual artifacts from attempted antialiasing
   allSprites.pixelPerfect = true;
 
-  world.gravity.y = GRAVITY;
+  world.gravity.y = NORMAL_GRAVITY;
 
   // --- TILE GROUPS ---
   ground = new Group();
@@ -99,26 +82,25 @@ function setup() {
   groundDeep.img = groundDeepImg;
   groundDeep.tile = "d";
 
-  // a Tiles object creates a level based on the level map array (defined at the beginning)
   new Tiles(level, 0, 0, TILE_W, TILE_H);
 
   // --- PLAYER ---
-  player = new Sprite(FRAME_W, MAP_START_Y, FRAME_W, FRAME_H); // create the player
-  player.spriteSheet = playerImg; // use the sprite sheet
-  player.rotationLock = true; // turn off rotations (player shouldn't rotate)
+  player = new Sprite(FRAME_W, MAP_START_Y, FRAME_W, FRAME_H);
+  player.spriteSheet = playerImg;
+  player.rotationLock = true;
 
-  // player animation parameters
   player.anis.w = FRAME_W;
   player.anis.h = FRAME_H;
-  player.anis.offset.y = -4; // offset the collision box up
-  player.addAnis(playerAnis); // add the player animations defined earlier
-  player.ani = "idle"; // default to the idle animation
-  player.w = 18; // set the width of the collsion box
-  player.h = 20; // set the height of the collsion box
-  player.friction = 0; // set the friciton to 0 so we don't stick to walls
-  player.bounciness = 0; // set the bounciness to 0 so the player doesn't bounce
+  player.anis.offset.y = -4;
+  player.addAnis(playerAnis);
+  player.ani = "idle";
 
-  // --- GROUND SENSOR --- for use when detecting if the player is standing on the ground
+  player.w = 18;
+  player.h = 20;
+  player.friction = 0;
+  player.bounciness = 0;
+
+  // --- SENSOR ---
   sensor = new Sprite();
   sensor.x = player.x;
   sensor.y = player.y + player.h / 2;
@@ -127,6 +109,7 @@ function setup() {
   sensor.mass = 0.01;
   sensor.removeColliders();
   sensor.visible = false;
+
   let sensorJoint = new GlueJoint(player, sensor);
   sensorJoint.visible = false;
 }
@@ -138,21 +121,23 @@ function draw() {
   image(bgImg, 0, 0, bgImg.width, bgImg.height);
   camera.on();
 
-  // --- PLAYER CONTROLS ---
-  // first check to see if the player is on the ground
+  // --- GRAVITY TOGGLE ---
+  world.gravity.y = moonGravity ? MOON_GRAVITY : NORMAL_GRAVITY;
+
+  // --- GROUND CHECK ---
   let grounded = sensor.overlapping(ground);
 
-  // -- ATTACK INPUT --
+  // --- ATTACK ---
   if (grounded && !attacking && kb.presses("space")) {
     attacking = true;
     attackFrameCounter = 0;
     player.vel.x = 0;
     player.ani.frame = 0;
     player.ani = "attack";
-    player.ani.play(); // plays once to end
+    player.ani.play();
   }
 
-  // -- JUMP --
+  // --- JUMP ---
   if (kb.presses("up") && grounded) {
     player.vel.y = -4.5;
   }
@@ -160,7 +145,6 @@ function draw() {
   // --- STATE MACHINE ---
   if (attacking) {
     attackFrameCounter++;
-    // Attack lasts ~6 frames * frameDelay 2 = 12 cycles (adjust if needed)
     if (attackFrameCounter > 12) {
       attacking = false;
       attackFrameCounter = 0;
@@ -172,6 +156,7 @@ function draw() {
     player.ani = kb.pressing("left") || kb.pressing("right") ? "run" : "idle";
   }
 
+  // --- LANDING DUST ---
   if (player.collides(ground) && !landed) {
     for (let i = 0; i < 6; i++) {
       let dust = new Sprite(
@@ -183,7 +168,6 @@ function draw() {
       dust.color = "#d6d6d6";
       dust.vel.y = random(-0.2, -0.6);
       dust.vel.x = random(-0.5, 0.5);
-
       dust.life = 25;
     }
 
@@ -197,6 +181,7 @@ function draw() {
   // --- MOVEMENT ---
   if (!attacking) {
     player.vel.x = 0;
+
     if (kb.pressing("left")) {
       player.vel.x = -1.5;
       player.mirror.x = true;
@@ -208,4 +193,72 @@ function draw() {
 
   // --- KEEP IN VIEW ---
   player.pos.x = constrain(player.pos.x, FRAME_W / 2, VIEWW - FRAME_W / 2);
+
+  // --- DEBUG UI ---
+  if (debugMode) {
+    drawDebugPanel();
+  }
+
+  if (debugMode && showHitboxes) {
+    drawHitboxes();
+  }
+}
+
+// --- DEBUG CONTROLS ---
+function keyPressed() {
+  if (key === "d" || key === "D") {
+    debugMode = !debugMode;
+  }
+
+  if (debugMode) {
+    if (key === "g" || key === "G") {
+      moonGravity = !moonGravity;
+    }
+
+    if (key === "h" || key === "H") {
+      showHitboxes = !showHitboxes;
+    }
+  }
+}
+
+// --- DEBUG PANEL ---
+function drawDebugPanel() {
+  camera.off();
+
+  push();
+  fill(0, 180);
+  rect(10, 10, 220, 130, 8);
+
+  fill(255);
+  textSize(10);
+
+  text("DEBUG MODE (D)", 20, 25);
+  text("G: Moon Gravity → " + (moonGravity ? "ON" : "OFF"), 20, 45);
+  text("H: Hitboxes → " + (showHitboxes ? "ON" : "OFF"), 20, 60);
+
+  text("FPS: " + floor(frameRate()), 20, 80);
+  text("X: " + floor(player.x), 20, 95);
+  text("Y: " + floor(player.y), 20, 110);
+  text("State: " + player.ani.name, 20, 125);
+
+  pop();
+
+  camera.on();
+}
+
+// --- HITBOXES ---
+function drawHitboxes() {
+  push();
+  noFill();
+  strokeWeight(1);
+
+  // player
+  stroke(255, 0, 0);
+  rect(player.x - player.w / 2, player.y - player.h / 2, player.w, player.h);
+
+  // sensor
+  stroke(0, 255, 0);
+  rect(sensor.x - sensor.w / 2, sensor.y - sensor.h / 2, sensor.w, sensor.h);
+
+  pop();
 }
